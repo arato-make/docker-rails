@@ -1,0 +1,54 @@
+version: '3'
+volumes:
+  postgres_data: {}
+  tmp-data: {}
+  certs: {}
+  certs-data: {}
+  redis-data: {}
+  active-storage: {}
+  public-file: {}
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: ./docker-rails/app/DockerFile
+      args:
+        - POSTGRES_USER=${POSTGRES_USER}
+        - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+        - DB_NAME=${DB_NAME}
+    volumes:
+      - tmp-data:/app/tmp
+      - active-storage:/app/storage
+      - public-file:/app/public
+    environment:
+      - "REDIS_URL=redis://redis:6379/1"
+    depends_on:
+      - db
+  db:
+    image: postgres
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    environment:
+      - "POSTGRES_USER=${POSTGRES_USER}"
+      - "POSTGRES_PASSWORD=${POSTGRES_PASSWORD}"
+  web:
+    build:
+      context: .
+      dockerfile: ./docker-rails/web/DockerFile
+      args:
+        - SERVER_NAME=${SERVER_NAME}
+    volumes:
+      - tmp-data:/app/tmp
+      - certs:/etc/letsencrypt
+      - certs-data:/var/lib/letsencrypt
+      - public-file:/app/public
+    depends_on:
+      - app
+    ports:
+      - 80:80
+      - 443:443
+  redis:
+    image: redis
+    volumes:
+      - redis-data:/data

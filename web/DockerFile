@@ -1,0 +1,12 @@
+FROM nginx
+
+ARG SERVER_NAME
+ENV SERVER_NAME=${SERVER_NAME}
+ENV SSL_CERTIFICATE_PATH=/etc/letsencrypt/live/${SERVER_NAME}/fullchain.pem
+ENV SSL_CERTIFICATE_KEY_PATH=/etc/letsencrypt/live/${SERVER_NAME}/privkey.pem
+
+COPY docker-rails/web/nginx.conf /tmp/nginx.conf
+
+RUN envsubst '$SERVER_NAME $SSL_CERTIFICATE_PATH $SSL_CERTIFICATE_KEY_PATH' < /tmp/nginx.conf > /etc/nginx/conf.d/default.conf
+
+CMD [ "nginx", "-g", "daemon off;" ]

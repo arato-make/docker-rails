@@ -1,0 +1,40 @@
+FROM node:14.15.1 as node
+FROM ruby:2.7.1
+
+RUN apt-get update -qq && apt-get install -y build-essential libpq-dev
+
+ARG POSTGRES_USER
+ARG POSTGRES_PASSWORD
+ARG DB_BANE
+
+ENV RAILS_ENV='production'
+ENV RACK_ENV='production'
+ENV POSTGRES_USER=${POSTGRES_USER}
+ENV POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+ENV DB_NAME=${DB_NAME}
+
+ENV RAILS_ROOT /app
+RUN mkdir -p $RAILS_ROOT
+WORKDIR $RAILS_ROOT
+
+COPY Gemfile Gemfile
+COPY Gemfile.lock Gemfile.lock
+RUN bundle install --jobs 20 --retry 5 --without development test
+
+ENV YARN_VERSION 1.22.5
+COPY --from=node /opt/yarn-v$YARN_VERSION /opt/yarn
+COPY --from=node /usr/local/bin/node /usr/local/bin/
+
+RUN ln -s /opt/yarn/bin/yarn /usr/local/bin/yarn \
+    && ln -s /opt/yarn/bin/yarnpkg /usr/local/bin/yarnpkg
+
+COPY package.json package.json
+COPY yarn.lock yarn.lock
+
+RUN yarn install
+
+COPY . .
+
+RUN bundle exec rake assets:precompile
+
+CMD ["bundle", "exec", "puma", "-C", "config/puma.rb"]
